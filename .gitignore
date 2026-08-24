@@ -1,0 +1,29 @@
+# Maven build output
+target/
+*.jar
+*.war
+*.ear
+
+# IDEs, editors, and AI assistant config
+.idea/
+*.iml
+.vscode/
+.claude/
+.classpath
+.project
+.settings/
+
+# Vaadin / Node
+node_modules/
+frontend/generated/
+
+# Local H2 database and runtime data
+data/
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
