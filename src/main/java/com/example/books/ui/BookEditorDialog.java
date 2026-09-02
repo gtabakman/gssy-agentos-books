@@ -45,8 +45,11 @@ public class BookEditorDialog extends Dialog {
 
     setHeaderTitle(book == null ? Messages.get("editor.newBook") : Messages.get("editor.editBook"));
     setCloseOnOutsideClick(false);
-    setWidth("40em");
-    getElement().getStyle().set("max-height", "90vh");
+    setWidth("75vw");
+    setMaxWidth("100vw");
+    setMaxHeight("90vh");
+    getElement().getStyle().set("box-sizing", "border-box");
+    getElement().getStyle().set("overflow-x", "hidden");
 
     form = new BookEditorForm(book, authorService.list(), tagService.list(), this::openAuthorEditor, this::openTagEditor);
 
@@ -66,6 +69,8 @@ public class BookEditorDialog extends Dialog {
     content.setPadding(false);
     content.setSpacing(true);
     content.setWidthFull();
+    content.getStyle().set("overflow-x", "hidden");
+    content.getStyle().set("max-width", "100%");
     add(content);
 
     Button cancel = new Button(Messages.get("dialog.cancel"), e -> close());
@@ -115,6 +120,11 @@ public class BookEditorDialog extends Dialog {
   public void refreshLookups() {
     form.refreshAuthorLookups(authorService.list());
     form.refreshTagLookups(tagService.list());
+  }
+
+  public void setMobileMode(boolean mobile) {
+    imageUpload.setMobileMode(mobile);
+    setWidth(mobile ? "100vw" : "75vw");
   }
 
   private void openAuthorEditor() {

@@ -18,6 +18,9 @@ public class NameEditorDialog extends Dialog {
       String title, String initialValue, Consumer<String> onSave, Runnable afterSave, boolean loopMode) {
     setHeaderTitle(title);
     setCloseOnOutsideClick(false);
+    getElement().getStyle().set("width", "min(24em, 95vw)");
+    getElement().getStyle().set("max-width", "100vw");
+    getElement().getStyle().set("max-height", "90vh");
 
     name.setLabel(Messages.get("tag.name"));
     name.setValue(initialValue != null ? initialValue : "");

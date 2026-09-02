@@ -28,9 +28,9 @@ public class BookEditorForm extends FormLayout {
   private final TextField subtitle = new TextField(Messages.get("book.subtitle"));
   private final MultiSelectComboBox<AuthorDto> authors = new MultiSelectComboBox<>();
   private final MultiSelectComboBox<TagDto> tags = new MultiSelectComboBox<>();
-  private final TextField isbn = new TextField(Messages.get("book.isbn"));
-  private final TextField publisher = new TextField(Messages.get("book.publisher"));
-  private final IntegerField year = new IntegerField(Messages.get("book.year"));
+  private final TextField isbn = new TextField();
+  private final TextField publisher = new TextField();
+  private final IntegerField year = new IntegerField();
   private final TextArea notes = new TextArea(Messages.get("book.notes"));
   private final Checkbox wishlist = new Checkbox(Messages.get("book.wishlist"));
 
@@ -42,6 +42,9 @@ public class BookEditorForm extends FormLayout {
       Runnable onAddTag) {
     setResponsiveSteps(new ResponsiveStep("0", 1), new ResponsiveStep("30em", 2));
     setWidthFull();
+    getStyle().set("max-width", "100%");
+    getStyle().set("overflow-x", "hidden");
+    getStyle().set("box-sizing", "border-box");
 
     title.setRequiredIndicatorVisible(true);
     title.setClearButtonVisible(true);
@@ -55,47 +58,61 @@ public class BookEditorForm extends FormLayout {
     authors.setItems(availableAuthors != null ? availableAuthors : List.of());
     authors.setPlaceholder(Messages.get("book.authors"));
     authors.setWidthFull();
+    authors.getStyle().set("min-width", "0");
+    authors.setAutoExpand(MultiSelectComboBox.AutoExpandMode.BOTH);
 
     tags.setItemLabelGenerator(t -> t != null ? Objects.toString(t.name(), "") : "");
     tags.setItems(availableTags != null ? availableTags : List.of());
     tags.setPlaceholder(Messages.get("tags.title"));
     tags.setWidthFull();
+    tags.getStyle().set("min-width", "0");
+    tags.setAutoExpand(MultiSelectComboBox.AutoExpandMode.BOTH);
 
     isbn.setClearButtonVisible(true);
     isbn.setValueChangeMode(ValueChangeMode.EAGER);
+    isbn.setWidthFull();
 
     publisher.setClearButtonVisible(true);
     publisher.setValueChangeMode(ValueChangeMode.EAGER);
+    publisher.setWidthFull();
 
     year.setMin(0);
     year.setMax(9999);
     year.setStep(1);
     year.setClearButtonVisible(true);
+    year.setWidthFull();
 
     notes.setClearButtonVisible(true);
     notes.setHeight("80px");
+    notes.setWidthFull();
 
-    HorizontalLayout authorsRow = new HorizontalLayout(authors, addButton(VaadinIcon.PLUS, Messages.get("authors.new"), onAddAuthor));
+    HorizontalLayout authorsRow = new HorizontalLayout(authors, addButton(VaadinIcon.PLUS, Messages.get("action.new"), onAddAuthor));
     authorsRow.setWidthFull();
+    authorsRow.setPadding(false);
     authorsRow.setAlignItems(Alignment.CENTER);
     authorsRow.setFlexGrow(1, authors);
     authorsRow.setFlexGrow(0, authorsRow.getComponentAt(1));
+    authorsRow.getStyle().set("min-width", "0");
 
-    HorizontalLayout tagsRow = new HorizontalLayout(tags, addButton(VaadinIcon.PLUS, Messages.get("tags.new"), onAddTag));
+    HorizontalLayout tagsRow = new HorizontalLayout(tags, addButton(VaadinIcon.PLUS, Messages.get("action.new"), onAddTag));
     tagsRow.setWidthFull();
+    tagsRow.setPadding(false);
     tagsRow.setAlignItems(Alignment.CENTER);
     tagsRow.setFlexGrow(1, tags);
     tagsRow.setFlexGrow(0, tagsRow.getComponentAt(1));
+    tagsRow.getStyle().set("min-width", "0");
 
     add(title, 2);
     add(subtitle, 2);
+    add(notes, 2);
     var authorsItem = addFormItem(authorsRow, new Span(Messages.get("book.authors")));
     setColspan(authorsItem, 2);
     var tagsItem = addFormItem(tagsRow, new Span(Messages.get("tags.title")));
     setColspan(tagsItem, 2);
-    add(notes, 2);
-    add(isbn, publisher);
-    add(year, wishlist);
+    addFormItem(isbn, new Span(Messages.get("book.isbn")));
+    addFormItem(publisher, new Span(Messages.get("book.publisher")));
+    addFormItem(year, new Span(Messages.get("book.year")));
+    add(wishlist);
 
     if (book != null) {
       title.setValue(defaultIfNull(book.title()));

@@ -16,6 +16,7 @@ target/
 # Vaadin / Node
 node_modules/
 frontend/generated/
+src/main/frontend/generated/
 
 # Local H2 database and runtime data
 data/

@@ -7,6 +7,7 @@ import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.UploadI18N;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
@@ -26,12 +27,14 @@ public class ImageUpload extends HorizontalLayout {
   private final AtomicBoolean removeExisting = new AtomicBoolean(false);
   private final AtomicBoolean hasOriginalImage = new AtomicBoolean(false);
   private final String alt;
+  private final Upload upload;
 
   public ImageUpload(String alt, int sizePx) {
     this.alt = alt;
 
     setAlignItems(Alignment.CENTER);
     setWidthFull();
+    getStyle().set("flex-wrap", "wrap");
 
     thumbnail = new Image();
     thumbnail.setAlt(alt);
@@ -66,7 +69,7 @@ public class ImageUpload extends HorizontalLayout {
     removeButton.addClickListener(e -> removeImage());
 
     MemoryBuffer buffer = new MemoryBuffer();
-    Upload upload = new Upload(buffer);
+    upload = new Upload(buffer);
     upload.setAcceptedFileTypes("image/png", "image/jpeg", "image/webp");
     upload.setMaxFiles(1);
 
@@ -86,6 +89,18 @@ public class ImageUpload extends HorizontalLayout {
     uploadBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
     upload.setUploadButton(uploadBtn);
 
+    Button cameraButton = new Button(Messages.get("imageupload.camera"), new Icon(VaadinIcon.CAMERA));
+    cameraButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+    cameraButton.setWidthFull();
+    cameraButton.addClickListener(
+        e ->
+            upload
+                .getElement()
+                .executeJs(
+                    "const input=this.shadowRoot&&this.shadowRoot.querySelector('input[type=file]');"
+                        + "if(input){input.setAttribute('capture','environment');input.click();"
+                        + "setTimeout(()=>input.removeAttribute('capture'),0);}"));
+
     upload.addSucceededListener(
         event -> {
           try {
@@ -102,10 +117,32 @@ public class ImageUpload extends HorizontalLayout {
     thumbBox.getStyle().set("align-items", "center");
     thumbBox.getStyle().set("justify-content", "center");
 
-    add(upload, thumbBox, removeButton);
-    setFlexGrow(1, upload);
-    setFlexGrow(0, thumbBox);
-    setFlexGrow(0, removeButton);
+    upload.getStyle().set("min-width", "0");
+    upload.getStyle().set("max-width", "100%");
+
+    HorizontalLayout imageRow = new HorizontalLayout(upload, thumbBox, removeButton);
+    imageRow.setAlignItems(Alignment.CENTER);
+    imageRow.setPadding(false);
+    imageRow.setWidthFull();
+    imageRow.getStyle().set("min-width", "0");
+    imageRow.getStyle().set("flex-wrap", "wrap");
+    imageRow.setFlexGrow(1, upload);
+    imageRow.setFlexGrow(0, thumbBox);
+    imageRow.setFlexGrow(0, removeButton);
+
+    VerticalLayout selectionControls = new VerticalLayout(imageRow, cameraButton);
+    selectionControls.setPadding(false);
+    selectionControls.setSpacing(false);
+    selectionControls.setWidthFull();
+    selectionControls.getStyle().set("min-width", "0");
+    selectionControls.getStyle().set("max-width", "100%");
+
+    add(selectionControls);
+    setFlexGrow(1, selectionControls);
+  }
+
+  public void setMobileMode(boolean mobile) {
+    upload.setDropAllowed(!mobile);
   }
 
   public void setImage(byte[] bytes, String contentType) {

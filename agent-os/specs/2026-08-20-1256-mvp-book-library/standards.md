@@ -21,4 +21,5 @@ The following standards apply to this work.
 - **Validation:** Client- and server-side validation use `setInvalid(true)` with localized `setErrorMessage(...)`; forms call `clearAllInvalid()` before each save attempt.
 - **Loop mode for new entities:** New book/author/tag dialogs support a “Save and add another” flow that clears the form and resets invalid state.
 - **Lint hygiene:** Unused fields and imports are removed; deprecated API usage is either migrated or suppressed with `@SuppressWarnings` and documented when the new API is not appropriate for the current scope.
+- **Responsive / mobile-first:** All pages, toolbars, and dialogs must adapt to narrow viewports. Layouts use wrapping flex containers, dialogs use `min()`/`max-width` sizing, and mobile card lists expose the same actions as desktop grid rows.
 - **Theme:** Vaadin 25.2.6 uses the Lumo theme as the default; Aura is not available, so a future theme-switching extension point is left in place.

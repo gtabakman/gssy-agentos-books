@@ -12,6 +12,9 @@ public class ConfirmDeleteDialog extends Dialog {
   public ConfirmDeleteDialog(String message, Runnable onConfirm) {
     setHeaderTitle(Messages.get("dialog.confirm.delete"));
     setCloseOnOutsideClick(false);
+    getElement().getStyle().set("width", "min(24em, 95vw)");
+    getElement().getStyle().set("max-width", "100vw");
+    getElement().getStyle().set("max-height", "90vh");
 
     add(new Span(message != null ? message : "Delete?"));
 

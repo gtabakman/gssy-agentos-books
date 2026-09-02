@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 
 public class AuthorsPage extends VerticalLayout {
 
-  private final TextField nameFilter = new TextField(Messages.get("books.search"));
+  private final TextField nameFilter = new TextField();
   private final Button clear = new Button(Messages.get("action.clear"), new Icon(VaadinIcon.CLOSE_SMALL));
 
   private final Div authorCards = new Div();
@@ -32,6 +32,8 @@ public class AuthorsPage extends VerticalLayout {
 
   private final AuthorService authorService;
   private final Runnable refresh;
+  private final Consumer<AuthorDto> onEditRow;
+  private final Consumer<AuthorDto> onDeleteRow;
 
   public AuthorsPage(
       AuthorService authorService,
@@ -43,11 +45,15 @@ public class AuthorsPage extends VerticalLayout {
       Runnable refresh) {
     this.authorService = authorService;
     this.refresh = refresh;
+    this.onEditRow = onEditRow;
+    this.onDeleteRow = onDeleteRow;
 
     setSizeFull();
     setPadding(false);
     setSpacing(true);
 
+    nameFilter.setPlaceholder(Messages.get("books.search"));
+    nameFilter.setLabel(null);
     nameFilter.setClearButtonVisible(true);
     nameFilter.setValueChangeMode(ValueChangeMode.EAGER);
 
@@ -63,12 +69,13 @@ public class AuthorsPage extends VerticalLayout {
     filters.setPadding(false);
     filters.setSpacing(true);
     filters.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
+    filters.getStyle().set("flex-wrap", "wrap");
     filters.setFlexGrow(1, nameFilter);
     filters.setFlexGrow(0, clear);
 
-    Button newBtn = new Button(Messages.get("authors.new"), new Icon(VaadinIcon.PLUS), e -> onNew.run());
-    Button editBtn = new Button(Messages.get("authors.edit"), new Icon(VaadinIcon.EDIT), e -> onEdit.run());
-    Button deleteBtn = new Button(Messages.get("authors.delete"), new Icon(VaadinIcon.TRASH), e -> onDelete.run());
+    Button newBtn = new Button(Messages.get("action.new"), new Icon(VaadinIcon.PLUS), e -> onNew.run());
+    Button editBtn = new Button(Messages.get("action.edit"), new Icon(VaadinIcon.EDIT), e -> onEdit.run());
+    Button deleteBtn = new Button(Messages.get("action.delete"), new Icon(VaadinIcon.TRASH), e -> onDelete.run());
     editBtn.setEnabled(false);
     deleteBtn.setEnabled(false);
 
@@ -82,6 +89,7 @@ public class AuthorsPage extends VerticalLayout {
     header.setSpacing(true);
     header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
     header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+    header.getStyle().set("flex-wrap", "wrap");
     header.expand(filters);
 
     configureGrid(onEditRow, onDeleteRow);
@@ -91,7 +99,8 @@ public class AuthorsPage extends VerticalLayout {
     authorCards.getStyle().set("display", "flex");
     authorCards.getStyle().set("flex-direction", "column");
     authorCards.getStyle().set("gap", "var(--lumo-space-s)");
-    authorCards.getStyle().set("overflow", "auto");
+    authorCards.getStyle().set("overflow-x", "hidden");
+    authorCards.getStyle().set("overflow-y", "auto");
     authorCards.setVisible(false);
 
     grid.asSingleSelect()
@@ -172,7 +181,8 @@ public class AuthorsPage extends VerticalLayout {
         .setSortable(true);
     grid.addColumn(r -> r.author().fullName())
         .setHeader(Messages.get("author.fullName"))
-        .setAutoWidth(true)
+        .setWidth("180px")
+        .setFlexGrow(2)
         .setSortable(true);
     grid.addColumn(r -> Messages.get("authors.usage", r.usage()))
         .setHeader(Messages.get("authors.title"))
@@ -200,23 +210,34 @@ public class AuthorsPage extends VerticalLayout {
       card.setWidthFull();
       styleCard(card, selected != null && selected.author() != null && r.author() != null && Objects.equals(selected.author().id(), r.author().id()));
 
-      Div row = new Div();
-      row.getStyle().set("display", "flex");
-      row.getStyle().set("align-items", "center");
-      row.getStyle().set("justify-content", "space-between");
-      row.getStyle().set("gap", "var(--lumo-space-s)");
+      Div topRow = new Div();
+      topRow.getStyle().set("display", "flex");
+      topRow.getStyle().set("align-items", "center");
+      topRow.getStyle().set("justify-content", "space-between");
+      topRow.getStyle().set("gap", "var(--lumo-space-s)");
 
       Span name = new Span(Objects.toString(r.author().fullName(), ""));
       name.getStyle().set("font-weight", "600");
+      name.getStyle().set("word-break", "break-word");
+      name.getStyle().set("min-width", "0");
+      name.getStyle().set("flex", "1");
 
-      row.add(name, new Span(Messages.get("authors.usage", r.usage())));
-      card.add(row);
+      topRow.add(name, cardActions(r.author()));
+
+      Span usage = new Span(Messages.get("authors.usage", r.usage()));
+      usage.getStyle().set("font-size", "var(--lumo-font-size-xs)");
+      usage.getStyle().set("color", "var(--lumo-secondary-text-color)");
+
+      card.add(topRow, usage);
       card.addClickListener(ev -> grid.select(r));
       authorCards.add(card);
     }
   }
 
   private static void styleCard(Div card, boolean selected) {
+    card.setWidthFull();
+    card.getStyle().set("box-sizing", "border-box");
+    card.getStyle().set("max-width", "100%");
     card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)");
     card.getStyle().set("border-radius", "var(--lumo-border-radius-l)");
     card.getStyle().set("padding", "var(--lumo-space-m)");
@@ -237,12 +258,32 @@ public class AuthorsPage extends VerticalLayout {
     actions.setAlignItems(FlexComponent.Alignment.CENTER);
 
     Button edit = new Button(new Icon(VaadinIcon.EDIT));
-    edit.setTooltipText(Messages.get("authors.edit"));
+    edit.setTooltipText(Messages.get("action.edit"));
     edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
     edit.addClickListener(e -> onEditRow.accept(author));
 
     Button delete = new Button(new Icon(VaadinIcon.TRASH));
-    delete.setTooltipText(Messages.get("authors.delete"));
+    delete.setTooltipText(Messages.get("action.delete"));
+    delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
+    delete.addClickListener(e -> onDeleteRow.accept(author));
+
+    actions.add(edit, delete);
+    return actions;
+  }
+
+  private Component cardActions(AuthorDto author) {
+    HorizontalLayout actions = new HorizontalLayout();
+    actions.setPadding(false);
+    actions.setSpacing(true);
+    actions.setAlignItems(FlexComponent.Alignment.CENTER);
+
+    Button edit = new Button(new Icon(VaadinIcon.EDIT));
+    edit.setTooltipText(Messages.get("action.edit"));
+    edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+    edit.addClickListener(e -> onEditRow.accept(author));
+
+    Button delete = new Button(new Icon(VaadinIcon.TRASH));
+    delete.setTooltipText(Messages.get("action.delete"));
     delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
     delete.addClickListener(e -> onDeleteRow.accept(author));
 

@@ -43,6 +43,8 @@ public class BooksPage extends VerticalLayout {
   private final Function<Long, String> displayNameForAuthorId;
   private final AtomicLong coverUrlVersion = new AtomicLong(System.currentTimeMillis());
   private final Runnable refresh;
+  private final Consumer<BookDto> onEditRow;
+  private final Consumer<BookDto> onDeleteRow;
 
   public BooksPage(
       TagService tagService,
@@ -57,6 +59,8 @@ public class BooksPage extends VerticalLayout {
     this.displayNameForTagId = displayNameForTagId;
     this.displayNameForAuthorId = displayNameForAuthorId;
     this.refresh = refresh;
+    this.onEditRow = onEditRow;
+    this.onDeleteRow = onDeleteRow;
 
     setSizeFull();
     setPadding(false);
@@ -82,7 +86,13 @@ public class BooksPage extends VerticalLayout {
           this.refresh.run();
         });
 
-    HorizontalLayout filters = new HorizontalLayout(text, tag, wishlist, clear);
+    // Desktop order: text, tag, wishlist, clear (via CSS order)
+    text.getElement().getStyle().set("order", "0");
+    tag.getElement().getStyle().set("order", "1");
+    wishlist.getElement().getStyle().set("order", "2");
+    clear.getElement().getStyle().set("order", "3");
+
+    HorizontalLayout filters = new HorizontalLayout(text, wishlist, tag, clear);
     filters.setWidthFull();
     filters.setPadding(false);
     filters.setSpacing(true);
@@ -103,8 +113,9 @@ public class BooksPage extends VerticalLayout {
     header.setWidthFull();
     header.setPadding(false);
     header.setSpacing(true);
-    header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
+    header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
     header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+    header.getStyle().set("flex-wrap", "wrap");
     header.expand(filters);
 
     configureGrid(onEditRow, onDeleteRow);
@@ -114,7 +125,8 @@ public class BooksPage extends VerticalLayout {
     booksCards.getStyle().set("display", "flex");
     booksCards.getStyle().set("flex-direction", "column");
     booksCards.getStyle().set("gap", "var(--lumo-space-s)");
-    booksCards.getStyle().set("overflow", "auto");
+    booksCards.getStyle().set("overflow-x", "hidden");
+    booksCards.getStyle().set("overflow-y", "auto");
     booksCards.setVisible(false);
 
     grid.asSingleSelect()
@@ -180,6 +192,22 @@ public class BooksPage extends VerticalLayout {
     grid.setVisible(visible);
   }
 
+  public void setMobileMode(boolean mobile) {
+    if (mobile) {
+      // Mobile: natural DOM order (text, wishlist, tag, clear)
+      text.getElement().getStyle().remove("order");
+      tag.getElement().getStyle().remove("order");
+      wishlist.getElement().getStyle().remove("order");
+      clear.getElement().getStyle().remove("order");
+    } else {
+      // Desktop: text, tag, wishlist, clear
+      text.getElement().getStyle().set("order", "0");
+      tag.getElement().getStyle().set("order", "1");
+      wishlist.getElement().getStyle().set("order", "2");
+      clear.getElement().getStyle().set("order", "3");
+    }
+  }
+
   public Div getBooksCards() {
     return booksCards;
   }
@@ -223,7 +251,8 @@ public class BooksPage extends VerticalLayout {
         .setSortable(true);
     grid.addColumn(BookDto::title)
         .setHeader(Messages.get("book.title"))
-        .setAutoWidth(true)
+        .setWidth("180px")
+        .setFlexGrow(2)
         .setSortable(true);
     grid.addColumn(
             c -> {
@@ -237,19 +266,23 @@ public class BooksPage extends VerticalLayout {
                   .collect(Collectors.joining(", "));
             })
         .setHeader(Messages.get("book.authors"))
-        .setAutoWidth(true)
+        .setWidth("160px")
+        .setFlexGrow(1)
         .setSortable(false);
     grid.addColumn(BookDto::isbn)
         .setHeader(Messages.get("book.isbn"))
-        .setAutoWidth(true)
+        .setWidth("120px")
+        .setFlexGrow(1)
         .setSortable(true);
     grid.addColumn(BookDto::publisher)
         .setHeader(Messages.get("book.publisher"))
-        .setAutoWidth(true)
+        .setWidth("140px")
+        .setFlexGrow(1)
         .setSortable(true);
     grid.addColumn(BookDto::year)
         .setHeader(Messages.get("book.year"))
-        .setAutoWidth(true)
+        .setWidth("90px")
+        .setFlexGrow(0)
         .setSortable(true);
     grid.addComponentColumn(this::renderWishlist)
         .setHeader("")
@@ -298,6 +331,7 @@ public class BooksPage extends VerticalLayout {
 
       Div headerRow = new Div();
       headerRow.getStyle().set("display", "flex");
+      headerRow.getStyle().set("flex-wrap", "wrap");
       headerRow.getStyle().set("align-items", "center");
       headerRow.getStyle().set("gap", "var(--lumo-space-m)");
 
@@ -309,20 +343,23 @@ public class BooksPage extends VerticalLayout {
       textBox.getStyle().set("min-width", "0");
       textBox.getStyle().set("flex", "1");
 
-      Div titleRow = new Div();
-      titleRow.getStyle().set("display", "flex");
-      titleRow.getStyle().set("align-items", "center");
-      titleRow.getStyle().set("justify-content", "space-between");
-      titleRow.getStyle().set("gap", "var(--lumo-space-s)");
-
-      Span title = new Span((Objects.toString(b.title(), "") + " " + Objects.toString(b.subtitle(), "")).trim());
+      Span title = new Span(Objects.toString(b.title(), "").trim());
       title.getStyle().set("font-weight", "600");
       title.getStyle().set("font-size", "var(--lumo-font-size-l)");
-      titleRow.add(title);
-      if (b.wishlist()) {
-        titleRow.add(badge(Messages.get("book.wishlist"), VaadinIcon.STAR));
+      title.getStyle().set("word-break", "break-word");
+      textBox.add(title);
+
+      String subtitleText = Objects.toString(b.subtitle(), "").trim();
+      if (!subtitleText.isBlank()) {
+        Span subtitleSpan = new Span(subtitleText);
+        subtitleSpan.getStyle().set("font-size", "var(--lumo-font-size-s)");
+        subtitleSpan.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        subtitleSpan.getStyle().set("font-style", "italic");
+        subtitleSpan.getStyle().set("word-break", "break-word");
+        textBox.add(subtitleSpan);
       }
 
+      int authorCount = b.authorIds() != null ? b.authorIds().size() : 0;
       String authorsText =
           b.authorIds() != null
               ? b.authorIds().stream()
@@ -331,16 +368,24 @@ public class BooksPage extends VerticalLayout {
                   .limit(2)
                   .collect(Collectors.joining(", "))
               : "";
+      if (authorCount > 2) {
+        authorsText = authorsText + " +" + (authorCount - 2);
+      }
       if (!authorsText.isBlank()) {
         Span authorLine = new Span(authorsText);
         authorLine.getStyle().set("color", "var(--lumo-secondary-text-color)");
         authorLine.getStyle().set("white-space", "nowrap");
         authorLine.getStyle().set("overflow", "hidden");
         authorLine.getStyle().set("text-overflow", "ellipsis");
+        authorLine.getStyle().set("max-width", "100%");
         textBox.add(authorLine);
       }
 
-      textBox.add(titleRow);
+      if (b.wishlist()) {
+        Div wishBadge = badge(Messages.get("book.wishlist"), VaadinIcon.STAR);
+        wishBadge.getStyle().set("align-self", "flex-start");
+        textBox.add(wishBadge);
+      }
 
       headerRow.add(cover, textBox);
 
@@ -382,6 +427,7 @@ public class BooksPage extends VerticalLayout {
       if (badges.getComponentCount() > 0) {
         card.add(badges);
       }
+      card.add(cardActions(b));
 
       card.addClickListener(ev -> select(b));
       booksCards.add(card);
@@ -434,6 +480,9 @@ public class BooksPage extends VerticalLayout {
   }
 
   private static void styleCard(Div card, boolean selected) {
+    card.setWidthFull();
+    card.getStyle().set("box-sizing", "border-box");
+    card.getStyle().set("max-width", "100%");
     card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)");
     card.getStyle().set("border-radius", "var(--lumo-border-radius-l)");
     card.getStyle().set("padding", "var(--lumo-space-m)");
@@ -478,6 +527,28 @@ public class BooksPage extends VerticalLayout {
     HorizontalLayout actions = new HorizontalLayout();
     actions.setPadding(false);
     actions.setSpacing(true);
+    actions.setAlignItems(FlexComponent.Alignment.CENTER);
+
+    Button edit = new Button(new Icon(VaadinIcon.EDIT));
+    edit.setTooltipText(Messages.get("books.edit"));
+    edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+    edit.addClickListener(e -> onEditRow.accept(book));
+
+    Button delete = new Button(new Icon(VaadinIcon.TRASH));
+    delete.setTooltipText(Messages.get("books.delete"));
+    delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
+    delete.addClickListener(e -> onDeleteRow.accept(book));
+
+    actions.add(edit, delete);
+    return actions;
+  }
+
+  private Component cardActions(BookDto book) {
+    HorizontalLayout actions = new HorizontalLayout();
+    actions.setPadding(false);
+    actions.setSpacing(true);
+    actions.setWidthFull();
+    actions.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
     actions.setAlignItems(FlexComponent.Alignment.CENTER);
 
     Button edit = new Button(new Icon(VaadinIcon.EDIT));

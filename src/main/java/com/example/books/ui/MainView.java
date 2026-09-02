@@ -81,6 +81,7 @@ public class MainView extends VerticalLayout {
       return;
     }
     this.mobileMode = mobile;
+    booksPage.setMobileMode(mobile);
     booksPage.getBooksCards().setVisible(mobile);
     booksPage.setGridVisible(!mobile);
     authorsPage.getCards().setVisible(mobile);
@@ -246,6 +247,7 @@ public class MainView extends VerticalLayout {
             },
             this::confirmDelete);
     openBookEditor = d;
+    d.setMobileMode(mobileMode);
     d.addDetachListener(
         ev -> {
           if (openBookEditor == d) {

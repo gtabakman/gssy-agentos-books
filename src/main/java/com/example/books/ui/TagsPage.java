@@ -10,6 +10,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -21,7 +22,7 @@ import java.util.function.Consumer;
 
 public class TagsPage extends VerticalLayout {
 
-  private final TextField nameFilter = new TextField(Messages.get("books.search"));
+  private final TextField nameFilter = new TextField();
   private final Button clear = new Button(Messages.get("action.clear"), new Icon(VaadinIcon.CLOSE_SMALL));
 
   private final Div tagCards = new Div();
@@ -31,6 +32,8 @@ public class TagsPage extends VerticalLayout {
 
   private final TagService tagService;
   private final Runnable refresh;
+  private final Consumer<TagDto> onEditRow;
+  private final Consumer<TagDto> onDeleteRow;
 
   public TagsPage(
       TagService tagService,
@@ -42,11 +45,15 @@ public class TagsPage extends VerticalLayout {
       Runnable refresh) {
     this.tagService = tagService;
     this.refresh = refresh;
+    this.onEditRow = onEditRow;
+    this.onDeleteRow = onDeleteRow;
 
     setSizeFull();
     setPadding(false);
     setSpacing(true);
 
+    nameFilter.setPlaceholder(Messages.get("books.search"));
+    nameFilter.setLabel(null);
     nameFilter.setClearButtonVisible(true);
     nameFilter.setValueChangeMode(ValueChangeMode.EAGER);
 
@@ -61,13 +68,14 @@ public class TagsPage extends VerticalLayout {
     filters.setWidthFull();
     filters.setPadding(false);
     filters.setSpacing(true);
-    filters.setDefaultVerticalComponentAlignment(Alignment.END);
+    filters.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
+    filters.getStyle().set("flex-wrap", "wrap");
     filters.setFlexGrow(1, nameFilter);
     filters.setFlexGrow(0, clear);
 
-    Button newBtn = new Button(Messages.get("tags.new"), new Icon(VaadinIcon.PLUS), e -> onNew.run());
-    Button editBtn = new Button(Messages.get("tags.edit"), new Icon(VaadinIcon.EDIT), e -> onEdit.run());
-    Button deleteBtn = new Button(Messages.get("tags.delete"), new Icon(VaadinIcon.TRASH), e -> onDelete.run());
+    Button newBtn = new Button(Messages.get("action.new"), new Icon(VaadinIcon.PLUS), e -> onNew.run());
+    Button editBtn = new Button(Messages.get("action.edit"), new Icon(VaadinIcon.EDIT), e -> onEdit.run());
+    Button deleteBtn = new Button(Messages.get("action.delete"), new Icon(VaadinIcon.TRASH), e -> onDelete.run());
     editBtn.setEnabled(false);
     deleteBtn.setEnabled(false);
 
@@ -79,8 +87,9 @@ public class TagsPage extends VerticalLayout {
     header.setWidthFull();
     header.setPadding(false);
     header.setSpacing(true);
-    header.setDefaultVerticalComponentAlignment(Alignment.END);
-    header.setJustifyContentMode(JustifyContentMode.BETWEEN);
+    header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
+    header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+    header.getStyle().set("flex-wrap", "wrap");
     header.expand(filters);
 
     configureGrid(onEditRow, onDeleteRow);
@@ -90,7 +99,8 @@ public class TagsPage extends VerticalLayout {
     tagCards.getStyle().set("display", "flex");
     tagCards.getStyle().set("flex-direction", "column");
     tagCards.getStyle().set("gap", "var(--lumo-space-s)");
-    tagCards.getStyle().set("overflow", "auto");
+    tagCards.getStyle().set("overflow-x", "hidden");
+    tagCards.getStyle().set("overflow-y", "auto");
     tagCards.setVisible(false);
 
     grid.asSingleSelect()
@@ -171,7 +181,8 @@ public class TagsPage extends VerticalLayout {
         .setSortable(true);
     grid.addColumn(r -> r.tag().name())
         .setHeader(Messages.get("tag.name"))
-        .setAutoWidth(true)
+        .setWidth("180px")
+        .setFlexGrow(2)
         .setSortable(true);
     grid.addColumn(r -> Messages.get("tags.usage", r.usage()))
         .setHeader(Messages.get("tags.title"))
@@ -199,23 +210,34 @@ public class TagsPage extends VerticalLayout {
       card.setWidthFull();
       styleCard(card, selected != null && selected.tag() != null && r.tag() != null && Objects.equals(selected.tag().id(), r.tag().id()));
 
-      Div row = new Div();
-      row.getStyle().set("display", "flex");
-      row.getStyle().set("align-items", "center");
-      row.getStyle().set("justify-content", "space-between");
-      row.getStyle().set("gap", "var(--lumo-space-s)");
+      Div topRow = new Div();
+      topRow.getStyle().set("display", "flex");
+      topRow.getStyle().set("align-items", "center");
+      topRow.getStyle().set("justify-content", "space-between");
+      topRow.getStyle().set("gap", "var(--lumo-space-s)");
 
       Span name = new Span(Objects.toString(r.tag().name(), ""));
       name.getStyle().set("font-weight", "600");
+      name.getStyle().set("word-break", "break-word");
+      name.getStyle().set("min-width", "0");
+      name.getStyle().set("flex", "1");
 
-      row.add(name, new Span(Messages.get("tags.usage", r.usage())));
-      card.add(row);
+      topRow.add(name, cardActions(r.tag()));
+
+      Span usage = new Span(Messages.get("tags.usage", r.usage()));
+      usage.getStyle().set("font-size", "var(--lumo-font-size-xs)");
+      usage.getStyle().set("color", "var(--lumo-secondary-text-color)");
+
+      card.add(topRow, usage);
       card.addClickListener(ev -> grid.select(r));
       tagCards.add(card);
     }
   }
 
   private static void styleCard(Div card, boolean selected) {
+    card.setWidthFull();
+    card.getStyle().set("box-sizing", "border-box");
+    card.getStyle().set("max-width", "100%");
     card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)");
     card.getStyle().set("border-radius", "var(--lumo-border-radius-l)");
     card.getStyle().set("padding", "var(--lumo-space-m)");
@@ -233,15 +255,35 @@ public class TagsPage extends VerticalLayout {
     HorizontalLayout actions = new HorizontalLayout();
     actions.setPadding(false);
     actions.setSpacing(true);
-    actions.setAlignItems(Alignment.CENTER);
+    actions.setAlignItems(FlexComponent.Alignment.CENTER);
 
     Button edit = new Button(new Icon(VaadinIcon.EDIT));
-    edit.setTooltipText(Messages.get("tags.edit"));
+    edit.setTooltipText(Messages.get("action.edit"));
     edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
     edit.addClickListener(e -> onEditRow.accept(tag));
 
     Button delete = new Button(new Icon(VaadinIcon.TRASH));
-    delete.setTooltipText(Messages.get("tags.delete"));
+    delete.setTooltipText(Messages.get("action.delete"));
+    delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
+    delete.addClickListener(e -> onDeleteRow.accept(tag));
+
+    actions.add(edit, delete);
+    return actions;
+  }
+
+  private Component cardActions(TagDto tag) {
+    HorizontalLayout actions = new HorizontalLayout();
+    actions.setPadding(false);
+    actions.setSpacing(true);
+    actions.setAlignItems(FlexComponent.Alignment.CENTER);
+
+    Button edit = new Button(new Icon(VaadinIcon.EDIT));
+    edit.setTooltipText(Messages.get("action.edit"));
+    edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+    edit.addClickListener(e -> onEditRow.accept(tag));
+
+    Button delete = new Button(new Icon(VaadinIcon.TRASH));
+    delete.setTooltipText(Messages.get("action.delete"));
     delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
     delete.addClickListener(e -> onDeleteRow.accept(tag));
 

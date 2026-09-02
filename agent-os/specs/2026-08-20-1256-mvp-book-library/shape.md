@@ -47,3 +47,5 @@ The following changes were applied after the initial app generation based on ong
 - Book dialog height constrained with `max-height: 90vh` to prevent excessive vertical space.
 - Invalid state is explicitly reset after “Save and add another” in author/tag dialogs.
 - `ImageUpload` i18n extended to include drop labels and upload error messages.
+- All page headers and toolbars now wrap on narrow viewports; every dialog uses responsive `min(..., 95vw)` width and `max-height: 90vh`.
+- Mobile card lists now include inline edit/delete action buttons for books, authors, and tags.

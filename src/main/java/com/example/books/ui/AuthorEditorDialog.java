@@ -23,6 +23,9 @@ public class AuthorEditorDialog extends Dialog {
       String title, AuthorDto author, AuthorService authorService, Runnable afterSave) {
     setHeaderTitle(title);
     setCloseOnOutsideClick(false);
+    getElement().getStyle().set("width", "min(30em, 95vw)");
+    getElement().getStyle().set("max-width", "100vw");
+    getElement().getStyle().set("max-height", "90vh");
     this.loopMode = author == null;
 
     firstName.setValue(author != null ? author.firstName() : "");
