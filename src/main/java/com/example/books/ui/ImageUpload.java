@@ -10,13 +10,11 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.UploadI18N;
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
-import java.io.IOException;
+import com.vaadin.flow.server.streams.UploadHandler;
 import java.util.Base64;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-@SuppressWarnings({"deprecation", "removal"})
 public class ImageUpload extends HorizontalLayout {
 
   private final Image thumbnail;
@@ -68,9 +66,15 @@ public class ImageUpload extends HorizontalLayout {
     removeButton.setEnabled(false);
     removeButton.addClickListener(e -> removeImage());
 
-    MemoryBuffer buffer = new MemoryBuffer();
-    upload = new Upload(buffer);
-    upload.setAcceptedFileTypes("image/png", "image/jpeg", "image/webp");
+    UploadHandler uploadHandler =
+        UploadHandler.inMemory(
+            (metadata, data) -> {
+              setCurrentImage(data, metadata.contentType());
+              removeExisting.set(false);
+            });
+    upload = new Upload(uploadHandler);
+    upload.setAcceptedMimeTypes("image/png", "image/jpeg", "image/webp");
+    upload.setAcceptedFileExtensions(".png", ".jpg", ".jpeg", ".webp");
     upload.setMaxFiles(1);
 
     UploadI18N i18n = new UploadI18N();
@@ -100,17 +104,6 @@ public class ImageUpload extends HorizontalLayout {
                     "const input=this.shadowRoot&&this.shadowRoot.querySelector('input[type=file]');"
                         + "if(input){input.setAttribute('capture','environment');input.click();"
                         + "setTimeout(()=>input.removeAttribute('capture'),0);}"));
-
-    upload.addSucceededListener(
-        event -> {
-          try {
-            byte[] bytes = buffer.getInputStream().readAllBytes();
-            setCurrentImage(bytes, event.getMIMEType());
-            removeExisting.set(false);
-          } catch (IOException ex) {
-            throw new RuntimeException(ex);
-          }
-        });
 
     Div thumbBox = new Div(placeholder, thumbnail);
     thumbBox.getStyle().set("display", "flex");

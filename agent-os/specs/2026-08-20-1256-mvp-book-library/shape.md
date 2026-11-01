@@ -11,7 +11,7 @@ Build the complete Phase 1 MVP for the `gssy-agentos-books` family book library.
 - Pattern and package layout mirror `gssy-contacts-v1`: `domain`, `repo`, `service`, `api/dto`, `ui`, `config`.
 - Cover images are stored as a `byte[]` LOB on `Book` and served through a dedicated REST endpoint, following the `profilePicture` pattern in the reference.
 - Tags are modeled as a separate entity with a `@ManyToMany` relationship to `Book`.
-- Mobile camera/ISBN capture is intentionally out of scope for the MVP (Phase 2).
+- Mobile camera capture and Open Library ISBN metadata lookup are included in the MVP.
 
 ## Context
 
@@ -46,6 +46,7 @@ The following changes were applied after the initial app generation based on ong
 - Toolbar wishlist checkbox and clear button aligned to the input field middle; grid wishlist column reduced to a checkbox and the tags column widened.
 - Book dialog height constrained with `max-height: 90vh` to prevent excessive vertical space.
 - Invalid state is explicitly reset after “Save and add another” in author/tag dialogs.
-- `ImageUpload` i18n extended to include drop labels and upload error messages.
+- `ImageUpload` i18n extended to include drop labels, camera capture, and upload error messages.
+- `GET /api/open-library/isbn/{isbn}` returns normalized Open Library metadata, preferring Hebrew edition data when available; the ISBN form action populates title, subtitle, publisher, year, authors, tags, and cover image.
 - All page headers and toolbars now wrap on narrow viewports; every dialog uses responsive `min(..., 95vw)` width and `max-height: 90vh`.
 - Mobile card lists now include inline edit/delete action buttons for books, authors, and tags.

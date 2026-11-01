@@ -39,7 +39,8 @@ public class BookEditorForm extends FormLayout {
       List<AuthorDto> availableAuthors,
       List<TagDto> availableTags,
       Runnable onAddAuthor,
-      Runnable onAddTag) {
+      Runnable onAddTag,
+      Runnable onLookupIsbn) {
     setResponsiveSteps(new ResponsiveStep("0", 1), new ResponsiveStep("30em", 2));
     setWidthFull();
     getStyle().set("max-width", "100%");
@@ -102,6 +103,15 @@ public class BookEditorForm extends FormLayout {
     tagsRow.setFlexGrow(0, tagsRow.getComponentAt(1));
     tagsRow.getStyle().set("min-width", "0");
 
+    Button lookupIsbn = addButton(VaadinIcon.SEARCH, Messages.get("openlibrary.lookup"), onLookupIsbn);
+    HorizontalLayout isbnRow = new HorizontalLayout(isbn, lookupIsbn);
+    isbnRow.setWidthFull();
+    isbnRow.setPadding(false);
+    isbnRow.setAlignItems(Alignment.CENTER);
+    isbnRow.setFlexGrow(1, isbn);
+    isbnRow.setFlexGrow(0, lookupIsbn);
+    isbnRow.getStyle().set("min-width", "0");
+
     add(title, 2);
     add(subtitle, 2);
     add(notes, 2);
@@ -109,7 +119,7 @@ public class BookEditorForm extends FormLayout {
     setColspan(authorsItem, 2);
     var tagsItem = addFormItem(tagsRow, new Span(Messages.get("tags.title")));
     setColspan(tagsItem, 2);
-    addFormItem(isbn, new Span(Messages.get("book.isbn")));
+    addFormItem(isbnRow, new Span(Messages.get("book.isbn")));
     addFormItem(publisher, new Span(Messages.get("book.publisher")));
     addFormItem(year, new Span(Messages.get("book.year")));
     add(wishlist);
@@ -181,6 +191,26 @@ public class BookEditorForm extends FormLayout {
 
   public MultiSelectComboBox<TagDto> getTags() {
     return tags;
+  }
+
+  public void selectAuthors(List<AuthorDto> availableAuthors, Set<Long> selectedIds) {
+    authors.setItems(availableAuthors != null ? availableAuthors : List.of());
+    authors.setValue(
+        availableAuthors == null
+            ? Set.of()
+            : availableAuthors.stream()
+                .filter(author -> author != null && selectedIds.contains(author.id()))
+                .collect(Collectors.toSet()));
+  }
+
+  public void selectTags(List<TagDto> availableTags, Set<Long> selectedIds) {
+    tags.setItems(availableTags != null ? availableTags : List.of());
+    tags.setValue(
+        availableTags == null
+            ? Set.of()
+            : availableTags.stream()
+                .filter(tag -> tag != null && selectedIds.contains(tag.id()))
+                .collect(Collectors.toSet()));
   }
 
   public void refreshAuthorLookups(List<AuthorDto> availableAuthors) {

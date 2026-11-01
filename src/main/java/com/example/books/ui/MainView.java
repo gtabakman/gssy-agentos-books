@@ -5,6 +5,7 @@ import com.example.books.api.dto.BookDto;
 import com.example.books.api.dto.TagDto;
 import com.example.books.service.AuthorService;
 import com.example.books.service.BookService;
+import com.example.books.service.OpenLibraryService;
 import com.example.books.service.TagService;
 import com.vaadin.flow.component.Direction;
 import com.vaadin.flow.component.UI;
@@ -28,6 +29,7 @@ public class MainView extends VerticalLayout {
   private final BookService bookService;
   private final TagService tagService;
   private final AuthorService authorService;
+  private final OpenLibraryService openLibraryService;
 
   private final BooksPage booksPage;
   private final AuthorsPage authorsPage;
@@ -40,10 +42,15 @@ public class MainView extends VerticalLayout {
 
   private volatile boolean mobileMode;
 
-  public MainView(BookService bookService, TagService tagService, AuthorService authorService) {
+  public MainView(
+      BookService bookService,
+      TagService tagService,
+      AuthorService authorService,
+      OpenLibraryService openLibraryService) {
     this.bookService = bookService;
     this.tagService = tagService;
     this.authorService = authorService;
+    this.openLibraryService = openLibraryService;
 
     UI.getCurrent().setDirection(Direction.RIGHT_TO_LEFT);
     UI.getCurrent().setLocale(Locale.forLanguageTag("he-IL"));
@@ -240,6 +247,7 @@ public class MainView extends VerticalLayout {
             bookService,
             tagService,
             authorService,
+            openLibraryService,
             () -> {
               refreshBooks();
               refreshTags();

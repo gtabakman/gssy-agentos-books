@@ -2,12 +2,15 @@ package com.example.books.ui;
 
 import com.example.books.api.dto.AuthorDto;
 import com.example.books.api.dto.BookDto;
+import com.example.books.api.dto.CreateAuthorRequest;
 import com.example.books.api.dto.CreateBookRequest;
+import com.example.books.api.dto.OpenLibraryBookDto;
 import com.example.books.api.dto.TagDto;
 import com.example.books.api.dto.UpdateBookRequest;
 import com.example.books.service.AuthorService;
 import com.example.books.service.BookService;
 import com.example.books.service.NotFoundException;
+import com.example.books.service.OpenLibraryService;
 import com.example.books.service.TagService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -17,8 +20,11 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class BookEditorDialog extends Dialog {
 
@@ -27,6 +33,7 @@ public class BookEditorDialog extends Dialog {
   private final BookService bookService;
   private final TagService tagService;
   private final AuthorService authorService;
+  private final OpenLibraryService openLibraryService;
   private final BookDto book;
   private final Runnable afterSave;
 
@@ -35,12 +42,14 @@ public class BookEditorDialog extends Dialog {
       BookService bookService,
       TagService tagService,
       AuthorService authorService,
+      OpenLibraryService openLibraryService,
       Runnable afterSave,
       Consumer<BookDto> onDeleteRequested) {
     this.book = book;
     this.bookService = bookService;
     this.tagService = tagService;
     this.authorService = authorService;
+    this.openLibraryService = openLibraryService;
     this.afterSave = afterSave;
 
     setHeaderTitle(book == null ? Messages.get("editor.newBook") : Messages.get("editor.editBook"));
@@ -51,7 +60,14 @@ public class BookEditorDialog extends Dialog {
     getElement().getStyle().set("box-sizing", "border-box");
     getElement().getStyle().set("overflow-x", "hidden");
 
-    form = new BookEditorForm(book, authorService.list(), tagService.list(), this::openAuthorEditor, this::openTagEditor);
+    form =
+        new BookEditorForm(
+            book,
+            authorService.list(),
+            tagService.list(),
+            this::openAuthorEditor,
+            this::openTagEditor,
+            this::lookupIsbn);
 
     imageUpload = new ImageUpload(Messages.get("book.cover"), 120);
     if (book != null && book.hasCoverPicture()) {
@@ -144,6 +160,81 @@ public class BookEditorDialog extends Dialog {
         () -> form.refreshTagLookups(tagService.list()),
         true)
         .open();
+  }
+
+  private void lookupIsbn() {
+    String isbn = form.getIsbn().getValue();
+    try {
+      OpenLibraryBookDto result = openLibraryService.lookupByIsbn(isbn);
+      form.getIsbn().setValue(result.isbn());
+      if (result.title() != null) {
+        form.getTitle().setValue(result.title());
+      }
+      if (result.subtitle() != null) {
+        form.getSubtitle().setValue(result.subtitle());
+      }
+      if (!result.publishers().isEmpty()) {
+        form.getPublisher().setValue(result.publishers().getFirst());
+      }
+      form.getYear().setValue(result.publishYear());
+      populateAuthors(result.authors());
+      populateTags(result.subjects().stream().limit(10).toList());
+      if (result.coverUrl() != null) {
+        OpenLibraryService.Cover cover = openLibraryService.downloadCover(result.coverUrl());
+        if (cover.bytes() != null && cover.bytes().length > 0) {
+          imageUpload.setImage(cover.bytes(), cover.contentType());
+        }
+      }
+      Notification.show(Messages.get("openlibrary.loaded"));
+    } catch (NotFoundException ex) {
+      Notification.show(Messages.get("openlibrary.notFound"));
+    } catch (IllegalArgumentException ex) {
+      form.getIsbn().setInvalid(true);
+      form.getIsbn().setErrorMessage(Messages.get("openlibrary.invalidIsbn"));
+    } catch (Exception ex) {
+      Notification.show(Messages.get("openlibrary.error"));
+    }
+  }
+
+  private void populateAuthors(List<String> names) {
+    List<AuthorDto> available = authorService.list();
+    for (String name : names) {
+      if (available.stream().noneMatch(author -> author.fullName().equalsIgnoreCase(name))) {
+        CreateAuthorRequest request = new CreateAuthorRequest();
+        int split = name.lastIndexOf(' ');
+        request.setFirstName(split > 0 ? name.substring(0, split).trim() : name);
+        request.setLastName(split > 0 ? name.substring(split + 1).trim() : null);
+        try {
+          authorService.create(request);
+        } catch (IllegalArgumentException ignored) {
+        }
+        available = authorService.list();
+      }
+    }
+    Set<String> normalized = names.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+    Set<Long> selectedIds =
+        available.stream()
+            .filter(author -> normalized.contains(author.fullName().toLowerCase(Locale.ROOT)))
+            .map(AuthorDto::id)
+            .collect(Collectors.toSet());
+    form.selectAuthors(available, selectedIds);
+  }
+
+  private void populateTags(List<String> names) {
+    List<TagDto> available = tagService.list();
+    for (String name : names) {
+      if (available.stream().noneMatch(tag -> tag.name().equalsIgnoreCase(name))) {
+        tagService.create(name);
+        available = tagService.list();
+      }
+    }
+    Set<String> normalized = names.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+    Set<Long> selectedIds =
+        available.stream()
+            .filter(tag -> normalized.contains(tag.name().toLowerCase(Locale.ROOT)))
+            .map(TagDto::id)
+            .collect(Collectors.toSet());
+    form.selectTags(available, selectedIds);
   }
 
   private void save(boolean andAnother) {
